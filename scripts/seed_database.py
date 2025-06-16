@@ -2,10 +2,17 @@ from database.db import SessionLocal, create_tables
 from database.models import Category, Product
 
 def seed_database():
+    print("🗄️ Database yaratilmoqda...")
     create_tables()
     
     db = SessionLocal()
     try:
+        # Kategoriyalar mavjudligini tekshirish
+        existing_categories = db.query(Category).count()
+        if existing_categories > 0:
+            print("✅ Database allaqachon mavjud!")
+            return
+        
         # Create categories
         categories_data = [
             {"name_uz": "Asosiy taomlar", "name_ru": "Основные блюда", "name_en": "Main Dishes"},
@@ -20,6 +27,7 @@ def seed_database():
             categories.append(category)
         
         db.commit()
+        print("✅ Kategoriyalar yaratildi!")
         
         # Create products
         products_data = [
@@ -55,8 +63,12 @@ def seed_database():
             db.add(product)
         
         db.commit()
-        print("Database seeded successfully!")
+        print("✅ Mahsulotlar yaratildi!")
+        print("🎉 Database muvaffaqiyatli yaratildi!")
         
+    except Exception as e:
+        print(f"❌ Xatolik: {e}")
+        db.rollback()
     finally:
         db.close()
 
