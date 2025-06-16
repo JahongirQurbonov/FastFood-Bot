@@ -25,25 +25,27 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: webapp/package.json  # app/ o'rniga webapp/
+          cache-dependency-path: webapp/package.json
           
       - name: Setup Pages
         uses: actions/configure-pages@v4
-        
+        with:
+          static_site_generator: next
+          
       - name: Install dependencies
         run: |
-          cd webapp  # app o'rniga webapp
+          cd webapp
           npm ci
           
-      - name: Build
+      - name: Build with Next.js
         run: |
-          cd webapp  # app o'rniga webapp
+          cd webapp
           npm run build
           
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./webapp/out  # app/out o'rniga webapp/out
+          path: ./webapp/out
 
   deploy:
     environment:
@@ -55,4 +57,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
