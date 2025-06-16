@@ -3,8 +3,7 @@
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
@@ -18,13 +17,18 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: app/package.json
+        
+    - name: Check files
+      run: |
+        echo "Repository structure:"
+        ls -la
+        echo "App directory:"
+        ls -la app/ || echo "App directory not found"
         
     - name: Install dependencies
       run: |
         cd app
-        npm ci
+        npm install
         
     - name: Build
       run: |
