@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import Message, WebAppInfo, KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import CommandStart, Command
 from database.db import Database
 from config import config
@@ -18,40 +18,32 @@ async def start_command(message: Message):
         VALUES (?, ?, ?, ?, ?)
     """, (user.id, user.username, user.first_name, user.last_name, user.language_code or 'uz'))
     
-    # WebApp tugmasi bilan keyboard yaratish
-    webapp_button = KeyboardButton(
-        text="🍔 Ovqat buyurtma qilish",
-        web_app=WebAppInfo(url=config.WEBAPP_URL)
-    )
-    
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [webapp_button],
-            [KeyboardButton(text="📞 Aloqa"), KeyboardButton(text="ℹ️ Ma'lumot")]
+    # Inline keyboard yaratish
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text="🍔 Order Food",
+                web_app=WebAppInfo(url=config.WEBAPP_URL)
+            )
         ],
-        resize_keyboard=True,
-        one_time_keyboard=False
-    )
+        [
+            InlineKeyboardButton(text="📞 Aloqa", callback_data="contact"),
+            InlineKeyboardButton(text="ℹ️ Ma'lumot", callback_data="about")
+        ]
+    ])
     
     welcome_text = (
-        f"🍔 <b>Salom, {user.first_name}!</b>\n\n"
-        f"<b>FastFood Bot-ga xush kelibsiz!</b>\n\n"
-        f"Bizning bot orqali siz:\n"
-        f"• 🚀 Tez va oson buyurtma bera olasiz\n"
-        f"• 🍕 Turli xil taomlarni tanlashingiz mumkin\n"
-        f"• 🏠 Uyingizgacha yetkazib beramiz\n"
-        f"• 💳 Online to'lov qilishingiz mumkin\n\n"
-        f"Buyurtma berish uchun quyidagi tugmani bosing:"
+        f"Let's get started 🍟\n\n"
+        f"Please tap the button below to order your perfect lunch!"
     )
     
     await message.answer(
         welcome_text,
-        reply_markup=keyboard,
-        parse_mode="HTML"
+        reply_markup=keyboard
     )
 
-@router.message(F.text == "📞 Aloqa")
-async def contact_info(message: Message):
+@router.callback_query(F.data == "contact")
+async def contact_info(callback):
     """Show contact information."""
     contact_text = (
         "📞 <b>Aloqa ma'lumotlari:</b>\n\n"
@@ -62,10 +54,11 @@ async def contact_info(message: Message):
         "❓ Savollaringiz bo'lsa, bemalol murojaat qiling!"
     )
     
-    await message.answer(contact_text, parse_mode="HTML")
+    await callback.message.edit_text(contact_text, parse_mode="HTML")
+    await callback.answer()
 
-@router.message(F.text == "ℹ️ Ma'lumot")
-async def about_info(message: Message):
+@router.callback_query(F.data == "about")
+async def about_info(callback):
     """Show information about the service."""
     about_text = (
         "ℹ️ <b>FastFood Bot haqida:</b>\n\n"
@@ -75,29 +68,8 @@ async def about_info(message: Message):
         "• Naqd va online to'lov qabul qilamiz\n"
         "• 24/7 xizmat ko'rsatamiz\n\n"
         "🎯 <b>Bizning maqsadimiz:</b>\n"
-        "Mijozlarimizga eng yaxshi xizmat ko'rsatish va\n"
-        "mazali taomlar bilan ta'minlash!\n\n"
-        "🚀 Bot versiyasi: 2.0\n"
-        "👨‍💻 Ishlab chiquvchi: @JahongirQurbonov"
+        "Mijozlarimizga eng yaxshi xizmat ko'rsatish!"
     )
     
-    await message.answer(about_text, parse_mode="HTML")
-
-@router.message(Command("admin"))
-async def admin_panel(message: Message):
-    """Show admin panel for authorized users."""
-    if message.from_user.id != config.ADMIN_ID:
-        await message.answer("❌ Sizda admin huquqlari yo'q!")
-        return
-    
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📊 Statistika", callback_data="admin_stats")],
-        [InlineKeyboardButton(text="📋 Buyurtmalar", callback_data="admin_orders")],
-        [InlineKeyboardButton(text="🍔 Menyu boshqaruvi", callback_data="admin_menu")],
-    ])
-    
-    await message.answer(
-        "🔧 <b>Admin Panel</b>\n\nKerakli bo'limni tanlang:",
-        reply_markup=keyboard,
-        parse_mode="HTML"
-    )
+    await callback.message.edit_text(about_text, parse_mode="HTML")
+    await callback.answer()

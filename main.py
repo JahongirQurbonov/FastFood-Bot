@@ -6,7 +6,7 @@ from aiogram.enums import ParseMode
 from config import config
 from database.db import create_tables
 from middlewares.localization import LocalizationMiddleware
-from handlers import start, payment, admin, webapp
+from handlers import start, payment, admin, webapp_handler
 
 # Configure logging
 logging.basicConfig(
@@ -37,7 +37,7 @@ async def main():
         dp.include_router(start.router)
         dp.include_router(payment.router)
         dp.include_router(admin.router)
-        dp.include_router(webapp.router)
+        dp.include_router(webapp_handler.router)
         
         logger.info("Bot started successfully!")
         
