@@ -1,9 +1,6 @@
-/** @type {import('next').NextConfig} */
+﻿/** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    appDir: true,
-  },
-  output: "export",
+  output: 'export',
   trailingSlash: true,
   eslint: {
     ignoreDuringBuilds: true,
@@ -14,7 +11,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  assetPrefix: process.env.NODE_ENV === "production" ? "" : "",
+  assetPrefix: process.env.NODE_ENV === 'production' ? '/FastFood-Bot' : '',
+  basePath: process.env.NODE_ENV === 'production' ? '/FastFood-Bot' : '',
 }
 
 module.exports = nextConfig
