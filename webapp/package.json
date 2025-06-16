@@ -2,7 +2,10 @@
   "name": "fastfood-webapp",
   "version": "1.0.0",
   "private": true,
+<<<<<<< HEAD
   "homepage": "https://jahongirqurbonov.github.io/FastFood-Bot",
+=======
+>>>>>>> caad0ee8e61490ad26db9a6f2cdd834e68b51074
   "dependencies": {
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/react": "^13.3.0",
