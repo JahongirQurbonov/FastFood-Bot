@@ -1,91 +1,54 @@
 from aiogram import Router, F
-from aiogram.types import Message, PreCheckoutQuery, LabeledPrice
-from aiogram.exceptions import TelegramBadRequest
-from services.order_manager import OrderManager
-from database.db import SessionLocal
-from database.models import User as DBUser
+from aiogram.types import Message, CallbackQuery, LabeledPrice, PreCheckoutQuery
+from aiogram.filters import Command
 from config import config
-import json
+import logging
 
 router = Router()
+logger = logging.getLogger(__name__)
 
-@router.message(F.web_app_data)
-async def web_app_data(message: Message):
-    """Handle data from WebApp"""
-    try:
-        data = json.loads(message.web_app_data.data)
-        
-        db = SessionLocal()
-        try:
-            user = db.query(DBUser).filter(DBUser.telegram_id == message.from_user.id).first()
-            if not user:
-                return
-            
-            # Create order
-            order = OrderManager.create_order(
-                user_id=user.id,
-                items=data['items'],
-                delivery_address=data.get('address', user.address),
-                phone=data.get('phone', user.phone)
-            )
-            
-            # Create invoice
-            prices = [LabeledPrice(label="Jami", amount=int(order.total_amount * 100))]  # Amount in kopecks
-            
-            await message.answer_invoice(
-                title="FastFood buyurtma",
-                description=f"Buyurtma #{order.id}",
-                payload=f"order_{order.id}",
-                provider_token=config.PAYMENT_PROVIDER_TOKEN,
-                currency="UZS",
-                prices=prices,
-                start_parameter=f"order_{order.id}",
-                photo_url="https://example.com/food-image.jpg",
-                photo_width=512,
-                photo_height=512
-            )
-            
-        finally:
-            db.close()
-            
-    except Exception as e:
-        await message.answer("❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring.")
+@router.message(Command("pay"))
+async def process_payment(message: Message):
+    """Process payment for an order."""
+    # This is a placeholder for payment processing
+    # You would integrate with actual payment providers here
+    
+    prices = [LabeledPrice(label="Buyurtma", amount=25000 * 100)]  # Amount in kopecks
+    
+    await message.answer_invoice(
+        title="FastFood Buyurtma",
+        description="Sizning buyurtmangiz uchun to'lov",
+        payload="fastfood_payment",
+        provider_token=config.PAYMENT_TOKEN,
+        currency="UZS",
+        prices=prices,
+        start_parameter="payment",
+        photo_url="https://example.com/food-image.jpg",
+        photo_width=512,
+        photo_height=512,
+        need_name=True,
+        need_phone_number=True,
+        need_shipping_address=True,
+        is_flexible=False
+    )
 
 @router.pre_checkout_query()
-async def pre_checkout_query(pre_checkout_query: PreCheckoutQuery):
-    """Handle pre-checkout query"""
+async def process_pre_checkout_query(pre_checkout_query: PreCheckoutQuery):
+    """Process pre-checkout query."""
     await pre_checkout_query.answer(ok=True)
 
 @router.message(F.successful_payment)
-async def successful_payment(message: Message):
-    """Handle successful payment"""
+async def process_successful_payment(message: Message):
+    """Process successful payment."""
     payment = message.successful_payment
-    order_id = int(payment.invoice_payload.split("_")[1])
     
-    # Update order status
-    OrderManager.update_order_status(order_id, "paid", payment.telegram_payment_charge_id)
+    success_message = (
+        "✅ <b>To'lov muvaffaqiyatli amalga oshirildi!</b>\n\n"
+        f"💰 <b>Summa:</b> {payment.total_amount // 100} {payment.currency}\n"
+        f"🆔 <b>To'lov ID:</b> {payment.provider_payment_charge_id}\n\n"
+        "🍔 Buyurtmangiz tez orada tayyorlanadi!\n"
+        "📞 Aloqa: +998 90 123 45 67"
+    )
     
-    db = SessionLocal()
-    try:
-        user = db.query(DBUser).filter(DBUser.telegram_id == message.from_user.id).first()
-        
-        texts = {
-            "uz": f"✅ To'lov muvaffaqiyatli amalga oshirildi!\n\nBuyurtma raqami: #{order_id}\n\nTez orada buyurtmangiz tayyorlanadi!",
-            "ru": f"✅ Оплата прошла успешно!\n\nНомер заказа: #{order_id}\n\nВаш заказ скоро будет готов!",
-            "en": f"✅ Payment completed successfully!\n\nOrder ID: #{order_id}\n\nYour order will be ready soon!"
-        }
-        
-        await message.answer(texts[user.language])
-        
-        # Notify admins
-        for admin_id in config.ADMIN_IDS:
-            try:
-                await message.bot.send_message(
-                    admin_id,
-                    f"🆕 Yangi buyurtma!\n\nBuyurtma #{order_id}\nSumma: {payment.total_amount/100} {payment.currency}\nFoydalanuvchi: {user.first_name} (@{user.username})"
-                )
-            except:
-                pass
-                
-    finally:
-        db.close()
+    await message.answer(success_message, parse_mode="HTML")
+    logger.info(f"Payment successful: {payment.provider_payment_charge_id}")

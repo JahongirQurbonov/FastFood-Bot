@@ -1,46 +1,20 @@
 import os
-from dotenv import load_dotenv
+from dataclasses import dataclass
 
-# .env faylini majburiy yuklash (environment variable'larni override qilish)
-load_dotenv(override=True)
-
+@dataclass
 class Config:
-    def __init__(self):
-        # .env faylidan to'g'ridan-to'g'ri o'qish
-        self.BOT_TOKEN = self._get_token_from_env_file()
-        self.WEBAPP_URL = os.getenv("WEBAPP_URL", "https://your-webapp.netlify.app")
-        self.DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///fastfood_bot.db")
-        self.REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
-        self.PAYMENT_PROVIDER_TOKEN = os.getenv("PAYMENT_PROVIDER_TOKEN", "YOUR_PAYMENT_TOKEN")
-        
-        # Admin IDs
-        admin_ids_str = os.getenv("ADMIN_IDS", "123456789")
-        try:
-            self.ADMIN_IDS = [int(x.strip()) for x in admin_ids_str.split(",") if x.strip()]
-        except:
-            self.ADMIN_IDS = [123456789]
-        
-        # Languages
-        self.LANGUAGES = {
-            "uz": "🇺🇿 O'zbek",
-            "ru": "🇷🇺 Русский", 
-            "en": "🇬🇧 English"
-        }
+    BOT_TOKEN: str = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
+    WEBAPP_URL: str = os.getenv("WEBAPP_URL", "https://jahongirqurbonov.github.io/FastFood-Bot/")
+    PAYMENT_TOKEN: str = os.getenv("PAYMENT_TOKEN", "YOUR_PAYMENT_TOKEN_HERE")
+    ADMIN_ID: int = int(os.getenv("ADMIN_ID", "123456789"))
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "fastfood_bot.db")
     
-    def _get_token_from_env_file(self):
-        """To'g'ridan-to'g'ri .env faylidan token o'qish"""
-        try:
-            with open('.env', 'r') as f:
-                for line in f:
-                    if line.startswith('BOT_TOKEN='):
-                        return line.split('=', 1)[1].strip()
-        except:
-            pass
-        return os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN")
+    # Localization
+    DEFAULT_LANGUAGE: str = "uz"
+    SUPPORTED_LANGUAGES: list = None
+    
+    def __post_init__(self):
+        if self.SUPPORTED_LANGUAGES is None:
+            self.SUPPORTED_LANGUAGES = ["uz", "ru", "en"]
 
 config = Config()
-
-# Debug print
-if __name__ == "__main__":
-    print(f"BOT_TOKEN: {config.BOT_TOKEN[:10]}...{config.BOT_TOKEN[-10:]}")
-    print(f"ADMIN_IDS: {config.ADMIN_IDS}")

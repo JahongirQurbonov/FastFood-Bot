@@ -1,13 +1,20 @@
 #!/bin/bash
 
-# 1. Git repository yaratish
-git init
+echo "🚀 FastFood Bot deploy qilish..."
+
+# Git repository yangilash
+echo "📦 Git repository yangilanmoqda..."
 git add .
-git commit -m "Initial commit: FastFood Telegram Bot"
+git commit -m "Update FastFood Bot"
+git push origin main
 
-# 2. GitHub repository bilan bog'lash
-git remote add origin https://github.com/YOUR_USERNAME/fastfood-telegram-bot.git
-git branch -M main
-git push -u origin main
+# WebApp deploy qilish
+echo "🌐 WebApp deploy qilinmoqda..."
+cd webapp
+npm run build
+git add .
+git commit -m "Deploy WebApp"
+git push -f origin gh-pages
 
-echo "✅ GitHub ga yuklandi!"
+echo "✅ Deploy tugallandi!"
+echo "🔗 WebApp URL: https://jahongirqurbonov.github.io/FastFood-Bot/"

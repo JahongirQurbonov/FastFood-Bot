@@ -1,112 +1,83 @@
 from aiogram import Router, F
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
-from database.db import SessionLocal
-from database.models import Product, Category, Order, RequiredChannel
-from keyboards.inline import admin_keyboard
+from database.db import Database
 from config import config
-from sqlalchemy import func
-from datetime import datetime, timedelta
+import json
 
 router = Router()
-
-class AdminStates(StatesGroup):
-    waiting_for_product_name = State()
-    waiting_for_product_price = State()
-    waiting_for_channel_id = State()
-    waiting_for_channel_name = State()
-
-@router.message(Command("admin"))
-async def admin_command(message: Message):
-    if message.from_user.id not in config.ADMIN_IDS:
-        return
-    
-    await message.answer(
-        "🔧 Admin Panel\n\nQuyidagi bo'limlardan birini tanlang:",
-        reply_markup=admin_keyboard()
-    )
+db = Database()
 
 @router.callback_query(F.data == "admin_stats")
-async def admin_stats(callback: CallbackQuery):
-    if callback.from_user.id not in config.ADMIN_IDS:
+async def show_admin_stats(callback: CallbackQuery):
+    """Show admin statistics."""
+    if callback.from_user.id != config.ADMIN_ID:
+        await callback.answer("❌ Sizda admin huquqlari yo'q!", show_alert=True)
         return
     
-    db = SessionLocal()
-    try:
-        # Get statistics
-        today = datetime.now().date()
-        week_ago = today - timedelta(days=7)
-        month_ago = today - timedelta(days=30)
-        
-        total_orders = db.query(Order).count()
-        today_orders = db.query(Order).filter(func.date(Order.created_at) == today).count()
-        week_orders = db.query(Order).filter(func.date(Order.created_at) >= week_ago).count()
-        month_orders = db.query(Order).filter(func.date(Order.created_at) >= month_ago).count()
-        
-        total_revenue = db.query(func.sum(Order.total_amount)).filter(Order.status == "paid").scalar() or 0
-        today_revenue = db.query(func.sum(Order.total_amount)).filter(
-            Order.status == "paid",
-            func.date(Order.created_at) == today
-        ).scalar() or 0
-        
-        stats_text = f"""📊 Statistika
-        
-🔢 Jami buyurtmalar: {total_orders}
-📅 Bugungi buyurtmalar: {today_orders}
-📅 Haftalik buyurtmalar: {week_orders}
-📅 Oylik buyurtmalar: {month_orders}
-
-💰 Jami daromad: {total_revenue:,.0f} so'm
-💰 Bugungi daromad: {today_revenue:,.0f} so'm"""
-        
-        await callback.message.edit_text(stats_text, reply_markup=admin_keyboard())
-    finally:
-        db.close()
+    # Get statistics from database
+    total_users = db.execute_query("SELECT COUNT(*) FROM users")
+    total_orders = db.execute_query("SELECT COUNT(*) FROM orders")
+    pending_orders = db.execute_query("SELECT COUNT(*) FROM orders WHERE status = 'pending'")
+    total_revenue = db.execute_query("SELECT SUM(total_amount) FROM orders WHERE payment_status = 'completed'")
     
+    stats_text = "📊 <b>Bot Statistikasi:</b>\n\n"
+    stats_text += f"👥 Jami foydalanuvchilar: {total_users[0][0] if total_users else 0}\n"
+    stats_text += f"📋 Jami buyurtmalar: {total_orders[0][0] if total_orders else 0}\n"
+    stats_text += f"⏳ Kutilayotgan buyurtmalar: {pending_orders[0][0] if pending_orders else 0}\n"
+    stats_text += f"💰 Jami daromad: {total_revenue[0][0] or 0:,} so'm"
+    
+    await callback.message.edit_text(stats_text, parse_mode="HTML")
     await callback.answer()
 
-@router.callback_query(F.data == "admin_products")
-async def admin_products(callback: CallbackQuery):
-    if callback.from_user.id not in config.ADMIN_IDS:
+@router.callback_query(F.data == "admin_orders")
+async def show_admin_orders(callback: CallbackQuery):
+    """Show recent orders for admin."""
+    if callback.from_user.id != config.ADMIN_ID:
+        await callback.answer("❌ Sizda admin huquqlari yo'q!", show_alert=True)
         return
     
-    db = SessionLocal()
-    try:
-        products = db.query(Product).filter(Product.is_active == True).all()
-        
-        products_text = "🍔 Mahsulotlar ro'yxati:\n\n"
-        for product in products[:10]:  # Show first 10 products
-            products_text += f"{product.emoji} {product.name_uz} - {product.price:,.0f} so'm\n"
-        
-        if len(products) > 10:
-            products_text += f"\n... va yana {len(products) - 10} ta mahsulot"
-        
-        await callback.message.edit_text(products_text, reply_markup=admin_keyboard())
-    finally:
-        db.close()
+    # Get recent orders
+    orders = db.execute_query("""
+        SELECT id, user_name, phone, total_amount, status, created_at 
+        FROM orders 
+        ORDER BY created_at DESC 
+        LIMIT 10
+    """)
     
+    if not orders:
+        await callback.message.edit_text("📋 Hozircha buyurtmalar yo'q.")
+        await callback.answer()
+        return
+    
+    orders_text = "📋 <b>So'nggi buyurtmalar:</b>\n\n"
+    
+    for order in orders:
+        order_id, user_name, phone, amount, status, created_at = order
+        status_emoji = "⏳" if status == "pending" else "✅" if status == "completed" else "❌"
+        orders_text += f"{status_emoji} <b>#{order_id}</b> - {user_name}\n"
+        orders_text += f"📱 {phone} | 💰 {amount:,} so'm\n"
+        orders_text += f"📅 {created_at}\n\n"
+    
+    await callback.message.edit_text(orders_text, parse_mode="HTML")
     await callback.answer()
 
-@router.callback_query(F.data == "admin_channels")
-async def admin_channels(callback: CallbackQuery):
-    if callback.from_user.id not in config.ADMIN_IDS:
+@router.callback_query(F.data == "admin_menu")
+async def show_admin_menu(callback: CallbackQuery):
+    """Show menu management for admin."""
+    if callback.from_user.id != config.ADMIN_ID:
+        await callback.answer("❌ Sizda admin huquqlari yo'q!", show_alert=True)
         return
     
-    db = SessionLocal()
-    try:
-        channels = db.query(RequiredChannel).filter(RequiredChannel.is_active == True).all()
-        
-        channels_text = "📢 Majburiy kanallar:\n\n"
-        if channels:
-            for channel in channels:
-                channels_text += f"• {channel.channel_name} ({channel.channel_id})\n"
-        else:
-            channels_text += "Hech qanday majburiy kanal yo'q"
-        
-        await callback.message.edit_text(channels_text, reply_markup=admin_keyboard())
-    finally:
-        db.close()
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="➕ Yangi taom qo'shish", callback_data="add_menu_item")],
+        [InlineKeyboardButton(text="📝 Taomlarni tahrirlash", callback_data="edit_menu_items")],
+        [InlineKeyboardButton(text="🔙 Orqaga", callback_data="back_to_admin")]
+    ])
     
+    await callback.message.edit_text(
+        "🍔 <b>Menyu boshqaruvi</b>\n\nKerakli amalni tanlang:",
+        reply_markup=keyboard,
+        parse_mode="HTML"
+    )
     await callback.answer()

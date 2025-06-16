@@ -1,24 +1,28 @@
 #!/bin/bash
 
-# 1. Loyihani clone qiling (yoki fayllarni yuklab oling)
-git clone https://github.com/your-repo/fastfood-telegram-bot.git
-cd fastfood-telegram-bot
+echo "🚀 FastFood Bot o'rnatish boshlandi..."
 
-# 2. Python virtual environment yarating
+# Virtual environment yaratish
+echo "📦 Virtual environment yaratilmoqda..."
 python3 -m venv venv
 
-# Linux/Mac uchun:
+# Virtual environment faollashtirish
+echo "🔧 Virtual environment faollashtirilmoqda..."
 source venv/bin/activate
 
-# Windows uchun:
-# venv\Scripts\activate
-
-# 3. Python dependencies o'rnating
+# Dependencies o'rnatish
+echo "📚 Dependencies o'rnatilmoqda..."
 pip install -r requirements.txt
 
-# 4. Node.js dependencies o'rnating (WebApp uchun)
-cd webapp
-npm install
-cd ..
+# Database yaratish
+echo "🗄️ Database yaratilmoqda..."
+python3 -c "from database.db import create_tables; create_tables()"
 
 echo "✅ O'rnatish tugallandi!"
+echo "🔑 .env faylini yarating va kerakli tokenlarni kiriting:"
+echo "BOT_TOKEN=your_bot_token_here"
+echo "WEBAPP_URL=https://jahongirqurbonov.github.io/FastFood-Bot/"
+echo "PAYMENT_TOKEN=your_payment_token_here"
+echo "ADMIN_ID=your_admin_id_here"
+echo ""
+echo "🚀 Botni ishga tushirish uchun: python3 main.py"
